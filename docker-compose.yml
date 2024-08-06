@@ -93,12 +93,18 @@ services:
     restart: unless-stopped
     volumes:
       - ./docker-nginx/certs/:/etc/nginx/certs/:ro
+      - ./docker-nginx/config:/etc/nginx/conf.d
+      - ./docker-nginx/dhparams/:/etc/nginx/dhparams/:ro
+      - ./conf/certbot/conf:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot
     ports:
       - ${WEB_HTTP_PORT}:80
       - ${WEB_HTTPS_PORT}:443
     environment:
       QFIELDCLOUD_HOST: ${QFIELDCLOUD_HOST}
+      QFIELDCLOUD_TLS_CERT: ${QFIELDCLOUD_TLS_CERT}
+      QFIELDCLOUD_TLS_KEY: ${QFIELDCLOUD_TLS_KEY}
+      QFIELDCLOUD_TLS_DHPARAMS: ${QFIELDCLOUD_TLS_DHPARAMS}
       WEB_HTTP_PORT: ${WEB_HTTP_PORT}
       WEB_HTTPS_PORT: ${WEB_HTTPS_PORT}
       LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL}
@@ -110,14 +116,6 @@ services:
         max-size: "1000m"
         max-file: "10"
         tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
-
-  mkcert:
-    image: vishnunair/docker-mkcert
-    environment:
-      domain: ${QFIELDCLOUD_HOST}
-    volumes:
-      - ./docker-nginx/certs/:/root/.local/share/mkcert/
-    command: /bin/sh -c 'mkcert -install && for i in $$(echo $$domain | sed "s/,/ /g"); do [ ! -f /root/.local/share/mkcert/$$i.pem ] && mkcert $$i; done && tail -f -n0 /etc/hosts'
 
   certbot:
     image: certbot/certbot

@@ -52,6 +52,10 @@ desire with a good editor:
 
 Make sure the host's firewall allows port _8009_, required by the `minio` service. Failing to meet this requirement is likely to result in the service being unable to start.
 
+To create self-signed certificates for host localhost run the following script:
+
+    ./scripts/init_mkcert.sh
+
 To build development images and run the containers:
 
     docker compose up -d --build
@@ -277,6 +281,39 @@ Create the directory for qfieldcloud logs and supervisor socket file
 
     mkdir /var/local/qfieldcloud
 
+### Using self-signed certificate from mkcert
+
+You can use your own certificates by creating them by mkcert in `docker-nginx/certs/` ànd changing `QFIELDCLOUD_TLS_CERT` and `QFIELDCLOUD_TLS_KEY` accordingly.
+Don't forget to create your Diffie-Hellman parameters.
+
+On a server with any hostname or localhost, you can get a self-signed certificate created by mkcert running the following script:
+
+    ./scripts/init_mkcert.sh
+
+### Using certificate from Let's Encrypt
+
+By default, QFieldCloud is using a self-signed certificate. For production use you should use a valid certificate.
+
+Note you want to change the `LETSENCRYPT_EMAIL`, `LETSENCRYPT_RSA_KEY_SIZE` and `LETSENCRYPT_STAGING` variables in `.env`.
+
+On a server with a public domain, you can get a certificate issued by Let's Encrypt using certbot running the following command:
+
+    ./scripts/init_letsencrypt.sh
+
+The certificates will be renewed automatically.
+
+To use this Let's Encrypt certificate within QFieldCloud you just need to uncomment the following lines in your `.env`:
+
+    QFIELDCLOUD_TLS_CERT=/etc/letsencrypt/live/${QFIELDCLOUD_HOST}/fullchain.pem
+    QFIELDCLOUD_TLS_KEY=/etc/letsencrypt/live/${QFIELDCLOUD_HOST}/privkey.pem
+    QFIELDCLOUD_TLS_DHPARAMS=/etc/nginx/dhparams/ssl-dhparams.pem
+
+DH Parameters can be generated for example by running cmd: curl https://ssl-config.mozilla.org/ffdhe4096.txt > ssl-dhparams.pem
+For further refrence check RFC7919 about common finite field DH parameter groups as recommended by Mozilla
+https://datatracker.ietf.org/doc/html/rfc7919#appendix-A.1, taken from https://wiki.mozilla.org/Security/Server_Side_TLS
+
+### Docker-compose builds
+
 Run and build the docker containers
 
     docker compose up -d --build
@@ -285,18 +322,15 @@ Run the django database migrations
 
     docker compose exec app python manage.py migrate
 
+Collect the static files
 
-## Create or renew a certificate using Let's Encrypt
+    docker compose exec app python manage.py collectstatic
 
-If you are running the server on a server with a public domain, you can install Let's Encrypt certificate by running the following command:
+### Additional NGINX config
 
-    ./scripts/init_letsencrypt.sh
+You can add additional config to nginx placing files in `docker-nginx/config/` ending with `.conf`. They will be included in the main `nginx.conf`.
 
-The same command can also be used to update an expired certificate.
-
-Note you may want to change the `LETSENCRYPT_EMAIL`, `LETSENCRYPT_RSA_KEY_SIZE` and `LETSENCRYPT_STAGING` variables.
-
-### Infrastructure
+## Infrastructure
 
 Based on this example
 <https://testdriven.io/blog/dockerizing-django-with-postgres-gunicorn-and-nginx/>
